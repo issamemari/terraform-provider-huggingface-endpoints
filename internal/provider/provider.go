@@ -11,15 +11,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/issamemari/huggingface-endpoints-client"
 )
 
-// Ensure the implementation satisfies the expected interfaces.
 var (
 	_ provider.Provider = &huggingfaceProvider{}
 )
 
-// New is a helper function to simplify provider server and testing implementation.
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
 		return &huggingfaceProvider{
@@ -28,11 +27,7 @@ func New(version string) func() provider.Provider {
 	}
 }
 
-// huggingfaceProvider is the provider implementation.
 type huggingfaceProvider struct {
-	// version is set to the provider version on release, "dev" when the
-	// provider is built and ran locally, and "test" when running acceptance
-	// testing.
 	version string
 }
 
@@ -68,13 +63,13 @@ type huggingfaceProviderModel struct {
 
 func ValidateConfiguration(config huggingfaceProviderModel, resp *provider.ConfigureResponse) error {
 	if config.Host.IsUnknown() || config.Host.IsNull() || config.Host.ValueString() == "" {
-		resp.Diagnostics.AddError("host", "HuggingFace API host unknown or empty")
+		resp.Diagnostics.AddError("host", "huggingface api host unknown or empty")
 	}
 	if config.Namespace.IsUnknown() || config.Namespace.IsNull() || config.Namespace.ValueString() == "" {
-		resp.Diagnostics.AddError("namespace", "HuggingFace API namespace unknown or empty")
+		resp.Diagnostics.AddError("namespace", "huggingface api namespace unknown or empty")
 	}
 	if config.Token.IsUnknown() || config.Token.IsNull() || config.Token.ValueString() == "" {
-		resp.Diagnostics.AddError("token", "HuggingFace API token unknown or empty")
+		resp.Diagnostics.AddError("token", "huggingface api token unknown or empty")
 	}
 	if resp.Diagnostics.HasError() {
 		return fmt.Errorf("invalid configuration")
@@ -83,6 +78,8 @@ func ValidateConfiguration(config huggingfaceProviderModel, resp *provider.Confi
 }
 
 func (p *huggingfaceProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	tflog.Info(ctx, "configuring huggingface provider")
+
 	var config huggingfaceProviderModel
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
@@ -98,10 +95,16 @@ func (p *huggingfaceProvider) Configure(ctx context.Context, req provider.Config
 	namespace := config.Namespace.ValueString()
 	token := config.Token.ValueString()
 
+	ctx = tflog.SetField(ctx, "huggingface_host", host)
+	ctx = tflog.SetField(ctx, "huggingface_namespace", namespace)
+	ctx = tflog.SetField(ctx, "huggingface_token", token)
+	ctx = tflog.MaskFieldValuesWithFieldKeys(ctx, "huggingface_token")
+	tflog.Debug(ctx, "creating huggingface client")
+
 	client, err := huggingface.NewClient(&host, &namespace, &token)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Unable to create HuggingFace API client",
+			"unable to create huggingface api client",
 			err.Error(),
 		)
 		return
@@ -109,6 +112,8 @@ func (p *huggingfaceProvider) Configure(ctx context.Context, req provider.Config
 
 	resp.DataSourceData = client
 	resp.ResourceData = client
+
+	tflog.Info(ctx, "huggingface provider configured", map[string]any{"success": true})
 }
 
 // DataSources defines the data sources implemented in the provider.
