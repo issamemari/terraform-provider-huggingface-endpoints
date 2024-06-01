@@ -1,93 +1,182 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 package provider
 
 import (
 	"context"
-	"net/http"
+	"os"
+
+	"terraform-provider-huggingface/internal/provider/data_sources"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/function"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/issamemari/huggingface-endpoints-client"
 )
 
-// Ensure ScaffoldingProvider satisfies various provider interfaces.
-var _ provider.Provider = &ScaffoldingProvider{}
-var _ provider.ProviderWithFunctions = &ScaffoldingProvider{}
+// Ensure the implementation satisfies the expected interfaces.
+var (
+	_ provider.Provider = &huggingfaceProvider{}
+)
 
-// ScaffoldingProvider defines the provider implementation.
-type ScaffoldingProvider struct {
+// New is a helper function to simplify provider server and testing implementation.
+func New(version string) func() provider.Provider {
+	return func() provider.Provider {
+		return &huggingfaceProvider{
+			version: version,
+		}
+	}
+}
+
+// huggingfaceProvider is the provider implementation.
+type huggingfaceProvider struct {
 	// version is set to the provider version on release, "dev" when the
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
 	version string
 }
 
-// ScaffoldingProviderModel describes the provider data model.
-type ScaffoldingProviderModel struct {
-	Endpoint types.String `tfsdk:"endpoint"`
-}
-
-func (p *ScaffoldingProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "scaffolding"
+// Metadata returns the provider type name.
+func (p *huggingfaceProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "huggingface"
 	resp.Version = p.version
 }
 
-func (p *ScaffoldingProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+// Schema defines the provider-level schema for configuration data.
+func (p *huggingfaceProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"endpoint": schema.StringAttribute{
-				MarkdownDescription: "Example provider attribute",
-				Optional:            true,
+			"host": schema.StringAttribute{
+				Optional: true,
+			},
+			"namespace": schema.StringAttribute{
+				Optional: true,
+			},
+			"token": schema.StringAttribute{
+				Optional:  true,
+				Sensitive: true,
 			},
 		},
 	}
 }
 
-func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var data ScaffoldingProviderModel
+// huggingfaceProviderModel maps provider schema data to a Go type.
+type huggingfaceProviderModel struct {
+	Host      types.String `tfsdk:"host"`
+	Namespace types.String `tfsdk:"namespace"`
+	Token     types.String `tfsdk:"token"`
+}
 
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-
+// Configure prepares a huggingface API client for data sources and resources.
+func (p *huggingfaceProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	// Retrieve provider data from configuration
+	var config huggingfaceProviderModel
+	diags := req.Config.Get(ctx, &config)
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	// Configuration values are now available.
-	// if data.Endpoint.IsNull() { /* ... */ }
-
-	// Example client configuration for data sources and resources
-	client := http.DefaultClient
+	// If practitioner provided a configuration value for any of the
+	// attributes, it must be a known value.
+	if config.Host.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("host"),
+			"Unknown HuggingFace API Host",
+			"The provider cannot create the HuggingFace API client as there is an unknown configuration value for the HuggingFace API host. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the HUGGINGFACE_HOST environment variable.",
+		)
+	}
+	if config.Namespace.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("namespace"),
+			"Unknown HuggingFace API Namespace",
+			"The provider cannot create the HuggingFace API client as there is an unknown configuration value for the HuggingFace API namespace. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the HUGGINGFACE_NAMESPACE environment variable.",
+		)
+	}
+	if config.Token.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("token"),
+			"Unknown HuggingFace API Token",
+			"The provider cannot create the HuggingFace API client as there is an unknown configuration value for the HuggingFace API token. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the HUGGINGFACE_TOKEN environment variable.",
+		)
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	// Default values to environment variables, but override
+	// with Terraform configuration value if set.
+	host := os.Getenv("HUGGINGFACE_HOST")
+	namespace := os.Getenv("HUGGINGFACE_NAMESPACE")
+	token := os.Getenv("HUGGINGFACE_TOKEN")
+	if !config.Host.IsNull() {
+		host = config.Host.ValueString()
+	}
+	if !config.Namespace.IsNull() {
+		namespace = config.Namespace.ValueString()
+	}
+	if !config.Token.IsNull() {
+		token = config.Token.ValueString()
+	}
+	// If any of the expected configurations are missing, return
+	// errors with provider-specific guidance.
+	if host == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("host"),
+			"Missing HuggingFace API Host",
+			"The provider cannot create the HuggingFace API client as there is a missing or empty value for the HuggingFace API host. "+
+				"Set the host value in the configuration or use the HUGGINGFACE_HOST environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+	if namespace == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("namespace"),
+			"Missing HuggingFace API Namespace",
+			"The provider cannot create the HuggingFace API client as there is a missing or empty value for the HuggingFace API namespace. "+
+				"Set the namespace value in the configuration or use the HUGGINGFACE_NAMESPACE environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+	if token == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("token"),
+			"Missing HuggingFace API Token",
+			"The provider cannot create the HuggingFace API client as there is a missing or empty value for the HuggingFace API token. "+
+				"Set the password value in the configuration or use the HUGGINGFACE_TOKEN environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	// Create a new HuggingFace client using the configuration values
+	client, err := huggingface.NewClient(&host, &namespace, &token)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to Create HuggingFace API Client",
+			"An unexpected error occurred when creating the HuggingFace API client. "+
+				"If the error is not clear, please contact the provider developers.\n\n"+
+				"HuggingFace Client Error: "+err.Error(),
+		)
+		return
+	}
+	// Make the HuggingFace client available during DataSource and Resource
+	// type Configure methods.
 	resp.DataSourceData = client
 	resp.ResourceData = client
 }
 
-func (p *ScaffoldingProvider) Resources(ctx context.Context) []func() resource.Resource {
-	return []func() resource.Resource{
-		NewExampleResource,
-	}
-}
-
-func (p *ScaffoldingProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+// DataSources defines the data sources implemented in the provider.
+func (p *huggingfaceProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewExampleDataSource,
+		data_sources.NewEndpointsDataSource,
 	}
 }
 
-func (p *ScaffoldingProvider) Functions(ctx context.Context) []func() function.Function {
-	return []func() function.Function{
-		NewExampleFunction,
-	}
-}
-
-func New(version string) func() provider.Provider {
-	return func() provider.Provider {
-		return &ScaffoldingProvider{
-			version: version,
-		}
-	}
+// Resources defines the resources implemented in the provider.
+func (p *huggingfaceProvider) Resources(_ context.Context) []func() resource.Resource {
+	return nil
 }
