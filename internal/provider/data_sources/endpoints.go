@@ -200,10 +200,8 @@ func (d *endpointsDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 			},
 		},
 	}
-
 }
 
-// Read refreshes the Terraform state with the latest data.
 func (d *endpointsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state endpointsDataSourceModel
 	endpoints, err := d.client.ListEndpoints()
@@ -268,7 +266,6 @@ func (d *endpointsDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	state.Endpoints = endpointDetailsList
 
-	// Set state
 	diags := resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
