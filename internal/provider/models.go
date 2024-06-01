@@ -1,12 +1,12 @@
-package data_sources
+package provider
 
-type EndpointDetails struct {
+type Endpoint struct {
 	AccountId string   `tfsdk:"account_id"`
 	Compute   Compute  `tfsdk:"compute"`
 	Model     Model    `tfsdk:"model"`
 	Name      string   `tfsdk:"name"`
 	Provider  Provider `tfsdk:"provider"`
-	Status    Status   `tfsdk:"status"`
+	Status    *Status  `tfsdk:"status"`
 	Type      string   `tfsdk:"type"`
 }
 

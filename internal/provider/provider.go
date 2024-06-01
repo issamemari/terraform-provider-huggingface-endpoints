@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"terraform-provider-huggingface/internal/provider/data_sources"
-
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -116,14 +114,14 @@ func (p *huggingfaceProvider) Configure(ctx context.Context, req provider.Config
 	tflog.Info(ctx, "huggingface provider configured", map[string]any{"success": true})
 }
 
-// DataSources defines the data sources implemented in the provider.
 func (p *huggingfaceProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		data_sources.NewEndpointsDataSource,
+		NewEndpointsDataSource,
 	}
 }
 
-// Resources defines the resources implemented in the provider.
 func (p *huggingfaceProvider) Resources(_ context.Context) []func() resource.Resource {
-	return nil
+	return []func() resource.Resource{
+		NewEndpointResource,
+	}
 }

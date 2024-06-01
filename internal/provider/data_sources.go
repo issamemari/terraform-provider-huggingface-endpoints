@@ -1,4 +1,4 @@
-package data_sources
+package provider
 
 import (
 	"context"
@@ -25,7 +25,7 @@ type endpointsDataSource struct {
 }
 
 type endpointsDataSourceModel struct {
-	Endpoints []EndpointDetails `tfsdk:"endpoints"`
+	Endpoints []Endpoint `tfsdk:"endpoints"`
 }
 
 // Configure adds the provider configured client to the data source.
@@ -213,11 +213,10 @@ func (d *endpointsDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	// Map response body to model
-	var endpointDetailsList []EndpointDetails
+	var endpointDetailsList []Endpoint
 
 	for _, endpoint := range endpoints {
-		endpointDetails := EndpointDetails{
+		endpointDetails := Endpoint{
 			AccountId: endpoint.AccountId,
 			Compute: Compute{
 				Accelerator:  endpoint.Compute.Accelerator,
@@ -245,7 +244,7 @@ func (d *endpointsDataSource) Read(ctx context.Context, req datasource.ReadReque
 				Region: endpoint.Provider.Region,
 				Vendor: endpoint.Provider.Vendor,
 			},
-			Status: Status{
+			Status: &Status{
 				CreatedAt:     endpoint.Status.CreatedAt.Format(time.RFC3339),
 				CreatedBy:     User{ID: endpoint.Status.CreatedBy.ID, Name: endpoint.Status.CreatedBy.Name},
 				ErrorMessage:  endpoint.Status.ErrorMessage,
