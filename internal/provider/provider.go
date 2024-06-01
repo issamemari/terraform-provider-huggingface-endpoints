@@ -2,12 +2,11 @@ package provider
 
 import (
 	"context"
-	"os"
+	"fmt"
 
 	"terraform-provider-huggingface/internal/provider/data_sources"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -61,110 +60,53 @@ func (p *huggingfaceProvider) Schema(_ context.Context, _ provider.SchemaRequest
 	}
 }
 
-// huggingfaceProviderModel maps provider schema data to a Go type.
 type huggingfaceProviderModel struct {
 	Host      types.String `tfsdk:"host"`
 	Namespace types.String `tfsdk:"namespace"`
 	Token     types.String `tfsdk:"token"`
 }
 
-// Configure prepares a huggingface API client for data sources and resources.
+func ValidateConfiguration(config huggingfaceProviderModel, resp *provider.ConfigureResponse) error {
+	if config.Host.IsUnknown() || config.Host.IsNull() || config.Host.ValueString() == "" {
+		resp.Diagnostics.AddError("host", "HuggingFace API host unknown or empty")
+	}
+	if config.Namespace.IsUnknown() || config.Namespace.IsNull() || config.Namespace.ValueString() == "" {
+		resp.Diagnostics.AddError("namespace", "HuggingFace API namespace unknown or empty")
+	}
+	if config.Token.IsUnknown() || config.Token.IsNull() || config.Token.ValueString() == "" {
+		resp.Diagnostics.AddError("token", "HuggingFace API token unknown or empty")
+	}
+	if resp.Diagnostics.HasError() {
+		return fmt.Errorf("invalid configuration")
+	}
+	return nil
+}
+
 func (p *huggingfaceProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	// Retrieve provider data from configuration
 	var config huggingfaceProviderModel
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	// If practitioner provided a configuration value for any of the
-	// attributes, it must be a known value.
-	if config.Host.IsUnknown() {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("host"),
-			"Unknown HuggingFace API Host",
-			"The provider cannot create the HuggingFace API client as there is an unknown configuration value for the HuggingFace API host. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the HUGGINGFACE_HOST environment variable.",
-		)
-	}
-	if config.Namespace.IsUnknown() {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("namespace"),
-			"Unknown HuggingFace API Namespace",
-			"The provider cannot create the HuggingFace API client as there is an unknown configuration value for the HuggingFace API namespace. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the HUGGINGFACE_NAMESPACE environment variable.",
-		)
-	}
-	if config.Token.IsUnknown() {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("token"),
-			"Unknown HuggingFace API Token",
-			"The provider cannot create the HuggingFace API client as there is an unknown configuration value for the HuggingFace API token. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the HUGGINGFACE_TOKEN environment variable.",
-		)
-	}
-	if resp.Diagnostics.HasError() {
+
+	if err := ValidateConfiguration(config, resp); err != nil {
 		return
 	}
-	// Default values to environment variables, but override
-	// with Terraform configuration value if set.
-	host := os.Getenv("HUGGINGFACE_HOST")
-	namespace := os.Getenv("HUGGINGFACE_NAMESPACE")
-	token := os.Getenv("HUGGINGFACE_TOKEN")
-	if !config.Host.IsNull() {
-		host = config.Host.ValueString()
-	}
-	if !config.Namespace.IsNull() {
-		namespace = config.Namespace.ValueString()
-	}
-	if !config.Token.IsNull() {
-		token = config.Token.ValueString()
-	}
-	// If any of the expected configurations are missing, return
-	// errors with provider-specific guidance.
-	if host == "" {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("host"),
-			"Missing HuggingFace API Host",
-			"The provider cannot create the HuggingFace API client as there is a missing or empty value for the HuggingFace API host. "+
-				"Set the host value in the configuration or use the HUGGINGFACE_HOST environment variable. "+
-				"If either is already set, ensure the value is not empty.",
-		)
-	}
-	if namespace == "" {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("namespace"),
-			"Missing HuggingFace API Namespace",
-			"The provider cannot create the HuggingFace API client as there is a missing or empty value for the HuggingFace API namespace. "+
-				"Set the namespace value in the configuration or use the HUGGINGFACE_NAMESPACE environment variable. "+
-				"If either is already set, ensure the value is not empty.",
-		)
-	}
-	if token == "" {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("token"),
-			"Missing HuggingFace API Token",
-			"The provider cannot create the HuggingFace API client as there is a missing or empty value for the HuggingFace API token. "+
-				"Set the password value in the configuration or use the HUGGINGFACE_TOKEN environment variable. "+
-				"If either is already set, ensure the value is not empty.",
-		)
-	}
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	// Create a new HuggingFace client using the configuration values
+
+	host := config.Host.ValueString()
+	namespace := config.Namespace.ValueString()
+	token := config.Token.ValueString()
+
 	client, err := huggingface.NewClient(&host, &namespace, &token)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Unable to Create HuggingFace API Client",
-			"An unexpected error occurred when creating the HuggingFace API client. "+
-				"If the error is not clear, please contact the provider developers.\n\n"+
-				"HuggingFace Client Error: "+err.Error(),
+			"Unable to create HuggingFace API client",
+			err.Error(),
 		)
 		return
 	}
-	// Make the HuggingFace client available during DataSource and Resource
-	// type Configure methods.
+
 	resp.DataSourceData = client
 	resp.ResourceData = client
 }
