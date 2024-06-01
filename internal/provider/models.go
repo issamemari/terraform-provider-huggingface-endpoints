@@ -1,7 +1,7 @@
 package provider
 
 type Endpoint struct {
-	AccountId string   `tfsdk:"account_id"`
+	AccountId *string  `tfsdk:"account_id"`
 	Compute   Compute  `tfsdk:"compute"`
 	Model     Model    `tfsdk:"model"`
 	Name      string   `tfsdk:"name"`

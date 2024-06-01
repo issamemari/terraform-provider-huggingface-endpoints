@@ -3,8 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -142,48 +140,74 @@ func (r *endpointResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	var items []huggingface.Endpoint
-	endpoint =huggingface.Endpoint{
-			AccountId: plan.Endpoint.AccountId,
-			Compute: huggingface.Compute{
-				Accelerator:  plan.Endpoint.Compute.Accelerator,
-				InstanceSize: plan.Endpoint.Compute.InstanceSize,
-				InstanceType: plan.Endpoint.Compute.InstanceType,
-				Scaling: huggingface.Scaling{
-					MaxReplica:         int(plan.Endpoint.Compute.Scaling.MaxReplica),
-					MinReplica:         int(plan.Endpoint.Compute.Scaling.MinReplica),
-					ScaleToZeroTimeout: int(plan.Endpoint.Compute.Scaling.ScaleToZeroTimeout),
+	endpoint := huggingface.Endpoint{
+		AccountId: plan.Endpoint.AccountId,
+		Compute: huggingface.Compute{
+			Accelerator:  plan.Endpoint.Compute.Accelerator,
+			InstanceSize: plan.Endpoint.Compute.InstanceSize,
+			InstanceType: plan.Endpoint.Compute.InstanceType,
+			Scaling: huggingface.Scaling{
+				MaxReplica:         int(plan.Endpoint.Compute.Scaling.MaxReplica),
+				MinReplica:         int(plan.Endpoint.Compute.Scaling.MinReplica),
+				ScaleToZeroTimeout: int(plan.Endpoint.Compute.Scaling.ScaleToZeroTimeout),
+			},
+		},
+		Model: huggingface.Model{
+			Framework: plan.Endpoint.Model.Framework,
+			Image: huggingface.Image{
+				Huggingface: huggingface.Huggingface{
+					Env: plan.Endpoint.Model.Image.Huggingface.Env,
 				},
 			},
-			Model: huggingface.Model{
-				Framework: plan.Endpoint.Model.Framework,
-				Image: huggingface.Image{
-					Huggingface: huggingface.Huggingface{
-						Env: plan.Endpoint.Model.Image.Huggingface.Env,
-					},
-				},
-				Repository: plan.Endpoint.Model.Repository,
-				Revision:   plan.Endpoint.Model.Revision,
-				Task:       plan.Endpoint.Model.Task,
-			},
-			Name: plan.Endpoint.Name,
-			Provider: huggingface.Provider{
-				Region: plan.Endpoint.Provider.Region,
-				Vendor: plan.Endpoint.Provider.Vendor,
-			},
-		}
+			Repository: plan.Endpoint.Model.Repository,
+			Revision:   plan.Endpoint.Model.Revision,
+			Task:       plan.Endpoint.Model.Task,
+		},
+		Name: plan.Endpoint.Name,
+		Provider: huggingface.Provider{
+			Region: plan.Endpoint.Provider.Region,
+			Vendor: plan.Endpoint.Provider.Vendor,
+		},
 	}
 
-	endpointCreationResponse, err := r.client.CreateEndpoint(endpoint)
+	createdEndpoint, err := r.client.CreateEndpoint(endpoint)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error creating order",
-			"Could not create order, unexpected error: "+err.Error(),
+			"Error creating endpoint",
+			"Could not create endpoint, unexpected error: "+err.Error(),
 		)
 		return
 	}
 
-	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
+	plan.Endpoint = Endpoint{
+		AccountId: createdEndpoint.AccountId,
+		Compute: Compute{
+			Accelerator:  createdEndpoint.Compute.Accelerator,
+			InstanceSize: createdEndpoint.Compute.InstanceSize,
+			InstanceType: createdEndpoint.Compute.InstanceType,
+			Scaling: Scaling{
+				MaxReplica:         createdEndpoint.Compute.Scaling.MaxReplica,
+				MinReplica:         createdEndpoint.Compute.Scaling.MinReplica,
+				ScaleToZeroTimeout: createdEndpoint.Compute.Scaling.ScaleToZeroTimeout,
+			},
+		},
+		Model: Model{
+			Framework: createdEndpoint.Model.Framework,
+			Image: Image{
+				Huggingface: Huggingface{
+					Env: createdEndpoint.Model.Image.Huggingface.Env,
+				},
+			},
+			Repository: createdEndpoint.Model.Repository,
+			Revision:   createdEndpoint.Model.Revision,
+			Task:       createdEndpoint.Model.Task,
+		},
+		Name: createdEndpoint.Name,
+		Provider: Provider{
+			Region: createdEndpoint.Provider.Region,
+			Vendor: createdEndpoint.Provider.Vendor,
+		},
+	}
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)

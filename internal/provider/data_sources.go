@@ -217,7 +217,7 @@ func (d *endpointsDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	for _, endpoint := range endpoints {
 		endpointDetails := Endpoint{
-			AccountId: endpoint.AccountId,
+			AccountId: *endpoint.AccountId,
 			Compute: Compute{
 				Accelerator:  endpoint.Compute.Accelerator,
 				InstanceSize: endpoint.Compute.InstanceSize,
