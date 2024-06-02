@@ -2,12 +2,12 @@ resource "huggingface_endpoint" "endpoint1" {
   name = "test-endpoint-issa1"
 
   compute = {
-    accelerator  = "cpu"
+    accelerator   = "cpu"
     instance_size = "x8"
     instance_type = "intel-icl"
     scaling = {
-      min_replica = 0
-      max_replica = 1
+      min_replica           = 0
+      max_replica           = 1
       scale_to_zero_timeout = 15
     }
   }
