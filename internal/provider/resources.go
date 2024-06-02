@@ -244,7 +244,6 @@ func (r *endpointResource) Read(ctx context.Context, req resource.ReadRequest, r
 	}
 
 	state = endpointResourceModel{
-		AccountId: types.StringValue(*endpoint.AccountId),
 		Compute: Compute{
 			Accelerator:  endpoint.Compute.Accelerator,
 			InstanceSize: endpoint.Compute.InstanceSize,
