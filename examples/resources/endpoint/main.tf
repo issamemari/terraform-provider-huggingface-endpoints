@@ -17,7 +17,7 @@ resource "huggingface_endpoint" "edu" {
 
   compute = {
     accelerator  = "cpu"
-    instance_size = "x4"
+    instance_size = "x8"
     instance_type = "intel-icl"
     scaling = {
       min_replica = 0
