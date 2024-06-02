@@ -28,18 +28,15 @@ type endpointsDataSourceModel struct {
 	Endpoints []Endpoint `tfsdk:"endpoints"`
 }
 
-// Configure adds the provider configured client to the data source.
 func (d *endpointsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	// Add a nil check when handling ProviderData because Terraform
-	// sets that data after it calls the ConfigureProvider RPC.
 	if req.ProviderData == nil {
 		return
 	}
 	client, ok := req.ProviderData.(*huggingface.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *huggingface.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			"unexpected data source configure type",
+			fmt.Sprintf("expected *huggingface.Client, got: %T.", req.ProviderData),
 		)
 		return
 	}
@@ -122,7 +119,7 @@ func (d *endpointsDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 						"name": schema.StringAttribute{
 							Computed: true,
 						},
-						"provider": schema.SingleNestedAttribute{
+						"provider_details": schema.SingleNestedAttribute{
 							Computed: true,
 							Attributes: map[string]schema.Attribute{
 								"region": schema.StringAttribute{
@@ -207,7 +204,7 @@ func (d *endpointsDataSource) Read(ctx context.Context, req datasource.ReadReque
 	endpoints, err := d.client.ListEndpoints()
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Unable to Read Endpoints",
+			"unable to read endpoints",
 			err.Error(),
 		)
 		return
@@ -217,7 +214,7 @@ func (d *endpointsDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	for _, endpoint := range endpoints {
 		endpointDetails := Endpoint{
-			AccountId: *endpoint.AccountId,
+			AccountId: endpoint.AccountId,
 			Compute: Compute{
 				Accelerator:  endpoint.Compute.Accelerator,
 				InstanceSize: endpoint.Compute.InstanceSize,

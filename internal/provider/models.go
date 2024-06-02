@@ -5,7 +5,7 @@ type Endpoint struct {
 	Compute   Compute  `tfsdk:"compute"`
 	Model     Model    `tfsdk:"model"`
 	Name      string   `tfsdk:"name"`
-	Provider  Provider `tfsdk:"provider"`
+	Provider  Provider `tfsdk:"provider_details"`
 	Status    *Status  `tfsdk:"status"`
 	Type      string   `tfsdk:"type"`
 }

@@ -30,8 +30,8 @@ func (r *endpointResource) Configure(_ context.Context, req resource.ConfigureRe
 	client, ok := req.ProviderData.(*huggingface.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *huggingface.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			"unexpected data source configure type",
+			fmt.Sprintf("expected *huggingface.Client, got: %T.", req.ProviderData),
 		)
 		return
 	}
@@ -46,50 +46,50 @@ func (r *endpointResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"account_id": schema.StringAttribute{
-				Computed: true,
+				Optional: true,
 			},
 			"compute": schema.SingleNestedAttribute{
-				Computed: true,
+				Required: true,
 				Attributes: map[string]schema.Attribute{
 					"accelerator": schema.StringAttribute{
-						Computed: true,
+						Required: true,
 					},
 					"instance_size": schema.StringAttribute{
-						Computed: true,
+						Required: true,
 					},
 					"instance_type": schema.StringAttribute{
-						Computed: true,
+						Required: true,
 					},
 					"scaling": schema.SingleNestedAttribute{
-						Computed: true,
+						Required: true,
 						Attributes: map[string]schema.Attribute{
 							"max_replica": schema.Int64Attribute{
-								Computed: true,
+								Required: true,
 							},
 							"min_replica": schema.Int64Attribute{
-								Computed: true,
+								Required: true,
 							},
 							"scale_to_zero_timeout": schema.Int64Attribute{
-								Computed: true,
+								Required: true,
 							},
 						},
 					},
 				},
 			},
 			"model": schema.SingleNestedAttribute{
-				Computed: true,
+				Required: true,
 				Attributes: map[string]schema.Attribute{
 					"framework": schema.StringAttribute{
-						Computed: true,
+						Required: true,
 					},
 					"image": schema.SingleNestedAttribute{
-						Computed: true,
+						Required: true,
 						Attributes: map[string]schema.Attribute{
 							"huggingface": schema.SingleNestedAttribute{
-								Computed: true,
+								Required: true,
 								Attributes: map[string]schema.Attribute{
 									"env": schema.MapAttribute{
-										Computed:    true,
+										Required:    true,
 										ElementType: types.StringType,
 									},
 								},
@@ -97,39 +97,35 @@ func (r *endpointResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 						},
 					},
 					"repository": schema.StringAttribute{
-						Computed: true,
+						Required: true,
 					},
 					"revision": schema.StringAttribute{
-						Computed: true,
+						Required: true,
 					},
 					"task": schema.StringAttribute{
-						Computed: true,
+						Required: true,
 					},
 				},
 			},
 			"name": schema.StringAttribute{
-				Computed: true,
+				Required: true,
 			},
-			"provider": schema.SingleNestedAttribute{
-				Computed: true,
+			"provider_details": schema.SingleNestedAttribute{
+				Required: true,
 				Attributes: map[string]schema.Attribute{
 					"region": schema.StringAttribute{
-						Computed: true,
+						Required: true,
 					},
 					"vendor": schema.StringAttribute{
-						Computed: true,
+						Required: true,
 					},
 				},
 			},
 			"type": schema.StringAttribute{
-				Computed: true,
+				Required: true,
 			},
 		},
 	}
-}
-
-type endpointResourceModel struct {
-	Endpoint Endpoint `tfsdk:"endpoint"`
 }
 
 func (r *endpointResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -141,46 +137,46 @@ func (r *endpointResource) Create(ctx context.Context, req resource.CreateReques
 	}
 
 	endpoint := huggingface.Endpoint{
-		AccountId: plan.Endpoint.AccountId,
+		Name:      plan.Name.ValueString(),
+		AccountId: plan.AccountId.ValueStringPointer(),
 		Compute: huggingface.Compute{
-			Accelerator:  plan.Endpoint.Compute.Accelerator,
-			InstanceSize: plan.Endpoint.Compute.InstanceSize,
-			InstanceType: plan.Endpoint.Compute.InstanceType,
+			Accelerator:  plan.Compute.Accelerator,
+			InstanceSize: plan.Compute.InstanceSize,
+			InstanceType: plan.Compute.InstanceType,
 			Scaling: huggingface.Scaling{
-				MaxReplica:         int(plan.Endpoint.Compute.Scaling.MaxReplica),
-				MinReplica:         int(plan.Endpoint.Compute.Scaling.MinReplica),
-				ScaleToZeroTimeout: int(plan.Endpoint.Compute.Scaling.ScaleToZeroTimeout),
+				MaxReplica:         int(plan.Compute.Scaling.MaxReplica),
+				MinReplica:         int(plan.Compute.Scaling.MinReplica),
+				ScaleToZeroTimeout: int(plan.Compute.Scaling.ScaleToZeroTimeout),
 			},
 		},
 		Model: huggingface.Model{
-			Framework: plan.Endpoint.Model.Framework,
+			Framework: plan.Model.Framework,
 			Image: huggingface.Image{
 				Huggingface: huggingface.Huggingface{
-					Env: plan.Endpoint.Model.Image.Huggingface.Env,
+					Env: plan.Model.Image.Huggingface.Env,
 				},
 			},
-			Repository: plan.Endpoint.Model.Repository,
-			Revision:   plan.Endpoint.Model.Revision,
-			Task:       plan.Endpoint.Model.Task,
+			Repository: plan.Model.Repository,
+			Revision:   plan.Model.Revision,
+			Task:       plan.Model.Task,
 		},
-		Name: plan.Endpoint.Name,
-		Provider: huggingface.Provider{
-			Region: plan.Endpoint.Provider.Region,
-			Vendor: plan.Endpoint.Provider.Vendor,
+		Provider: &huggingface.Provider{
+			Region: plan.ProviderDetails.Region,
+			Vendor: plan.ProviderDetails.Vendor,
 		},
+		Type: plan.Type.ValueString(),
 	}
 
 	createdEndpoint, err := r.client.CreateEndpoint(endpoint)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error creating endpoint",
-			"Could not create endpoint, unexpected error: "+err.Error(),
+			"error creating endpoint",
+			err.Error(),
 		)
 		return
 	}
 
-	plan.Endpoint = Endpoint{
-		AccountId: createdEndpoint.AccountId,
+	plan = endpointResourceModel{
 		Compute: Compute{
 			Accelerator:  createdEndpoint.Compute.Accelerator,
 			InstanceSize: createdEndpoint.Compute.InstanceSize,
@@ -202,14 +198,18 @@ func (r *endpointResource) Create(ctx context.Context, req resource.CreateReques
 			Revision:   createdEndpoint.Model.Revision,
 			Task:       createdEndpoint.Model.Task,
 		},
-		Name: createdEndpoint.Name,
-		Provider: Provider{
+		Name: types.StringValue(createdEndpoint.Name),
+		ProviderDetails: Provider{
 			Region: createdEndpoint.Provider.Region,
 			Vendor: createdEndpoint.Provider.Vendor,
 		},
+		Type: types.StringValue(createdEndpoint.Type),
 	}
 
-	// Set state to fully populated data
+	if createdEndpoint.AccountId != nil {
+		plan.AccountId = types.StringValue(*createdEndpoint.AccountId)
+	}
+
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -217,7 +217,72 @@ func (r *endpointResource) Create(ctx context.Context, req resource.CreateReques
 	}
 }
 
+type endpointResourceModel struct {
+	AccountId       types.String `tfsdk:"account_id"`
+	Compute         Compute      `tfsdk:"compute"`
+	Model           Model        `tfsdk:"model"`
+	Name            types.String `tfsdk:"name"`
+	ProviderDetails Provider     `tfsdk:"provider_details"`
+	Type            types.String `tfsdk:"type"`
+}
+
 func (r *endpointResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state endpointResourceModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	endpoint, err := r.client.GetEndpoint(state.Name.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"error reading endpoint",
+			"could not read endpoint named "+state.Name.ValueString()+": "+err.Error(),
+		)
+		return
+	}
+
+	state = endpointResourceModel{
+		AccountId: types.StringValue(*endpoint.AccountId),
+		Compute: Compute{
+			Accelerator:  endpoint.Compute.Accelerator,
+			InstanceSize: endpoint.Compute.InstanceSize,
+			InstanceType: endpoint.Compute.InstanceType,
+			Scaling: Scaling{
+				MaxReplica:         endpoint.Compute.Scaling.MaxReplica,
+				MinReplica:         endpoint.Compute.Scaling.MinReplica,
+				ScaleToZeroTimeout: endpoint.Compute.Scaling.ScaleToZeroTimeout,
+			},
+		},
+		Model: Model{
+			Framework: endpoint.Model.Framework,
+			Image: Image{
+				Huggingface: Huggingface{
+					Env: endpoint.Model.Image.Huggingface.Env,
+				},
+			},
+			Repository: endpoint.Model.Repository,
+			Revision:   endpoint.Model.Revision,
+			Task:       endpoint.Model.Task,
+		},
+		Name: types.StringValue(endpoint.Name),
+		ProviderDetails: Provider{
+			Region: endpoint.Provider.Region,
+			Vendor: endpoint.Provider.Vendor,
+		},
+		Type: types.StringValue(endpoint.Type),
+	}
+
+	if endpoint.AccountId != nil {
+		state.AccountId = types.StringValue(*endpoint.AccountId)
+	}
+
+	diags = resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 func (r *endpointResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
