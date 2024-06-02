@@ -1,13 +1,13 @@
 package provider
 
 type Endpoint struct {
-	AccountId *string  `tfsdk:"account_id"`
-	Compute   Compute  `tfsdk:"compute"`
-	Model     Model    `tfsdk:"model"`
-	Name      string   `tfsdk:"name"`
-	Provider  Provider `tfsdk:"provider_details"`
-	Status    *Status  `tfsdk:"status"`
-	Type      string   `tfsdk:"type"`
+	AccountId *string `tfsdk:"account_id"`
+	Compute   Compute `tfsdk:"compute"`
+	Model     Model   `tfsdk:"model"`
+	Name      string  `tfsdk:"name"`
+	Cloud     Cloud   `tfsdk:"cloud"`
+	Status    *Status `tfsdk:"status"`
+	Type      string  `tfsdk:"type"`
 }
 
 type Compute struct {
@@ -39,7 +39,7 @@ type Huggingface struct {
 	Env map[string]interface{} `tfsdk:"env"`
 }
 
-type Provider struct {
+type Cloud struct {
 	Region string `tfsdk:"region"`
 	Vendor string `tfsdk:"vendor"`
 }

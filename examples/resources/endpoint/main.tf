@@ -38,7 +38,7 @@ resource "huggingface_endpoint" "edu" {
     task       = "sentence-embeddings"
   }
 
-  provider_details = {
+  cloud = {
     region = "us-east-1"
     vendor = "aws"
   }

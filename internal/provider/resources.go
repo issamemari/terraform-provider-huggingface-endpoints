@@ -24,12 +24,12 @@ type endpointResource struct {
 }
 
 type endpointResourceModel struct {
-	AccountId       types.String `tfsdk:"account_id"`
-	Compute         Compute      `tfsdk:"compute"`
-	Model           Model        `tfsdk:"model"`
-	Name            types.String `tfsdk:"name"`
-	ProviderDetails Provider     `tfsdk:"provider_details"`
-	Type            types.String `tfsdk:"type"`
+	AccountId types.String `tfsdk:"account_id"`
+	Compute   Compute      `tfsdk:"compute"`
+	Model     Model        `tfsdk:"model"`
+	Name      types.String `tfsdk:"name"`
+	Cloud     Cloud        `tfsdk:"cloud"`
+	Type      types.String `tfsdk:"type"`
 }
 
 func (r *endpointResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -119,7 +119,7 @@ func (r *endpointResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"name": schema.StringAttribute{
 				Required: true,
 			},
-			"provider_details": schema.SingleNestedAttribute{
+			"cloud": schema.SingleNestedAttribute{
 				Required: true,
 				Attributes: map[string]schema.Attribute{
 					"region": schema.StringAttribute{
