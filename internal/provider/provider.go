@@ -115,9 +115,7 @@ func (p *huggingfaceProvider) Configure(ctx context.Context, req provider.Config
 }
 
 func (p *huggingfaceProvider) DataSources(_ context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{
-		NewEndpointsDataSource,
-	}
+	return nil
 }
 
 func (p *huggingfaceProvider) Resources(_ context.Context) []func() resource.Resource {
