@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/issamemari/huggingface-endpoints-client"
+	"github.com/issamemari/huggingface-endpoints-client-go"
 )
 
 var (
