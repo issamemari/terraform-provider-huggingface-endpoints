@@ -170,8 +170,8 @@ func (r *endpointResource) Create(ctx context.Context, req resource.CreateReques
 			Task:       plan.Model.Task,
 		},
 		Provider: &huggingface.Provider{
-			Region: plan.ProviderDetails.Region,
-			Vendor: plan.ProviderDetails.Vendor,
+			Region: plan.Cloud.Region,
+			Vendor: plan.Cloud.Vendor,
 		},
 		Type: plan.Type.ValueString(),
 	}
@@ -209,7 +209,7 @@ func (r *endpointResource) Create(ctx context.Context, req resource.CreateReques
 			Task:       createdEndpoint.Model.Task,
 		},
 		Name: types.StringValue(createdEndpoint.Name),
-		ProviderDetails: Provider{
+		Cloud: Cloud{
 			Region: createdEndpoint.Provider.Region,
 			Vendor: createdEndpoint.Provider.Vendor,
 		},
@@ -268,7 +268,7 @@ func (r *endpointResource) Read(ctx context.Context, req resource.ReadRequest, r
 			Task:       endpoint.Model.Task,
 		},
 		Name: types.StringValue(endpoint.Name),
-		ProviderDetails: Provider{
+		Cloud: Cloud{
 			Region: endpoint.Provider.Region,
 			Vendor: endpoint.Provider.Vendor,
 		},
@@ -319,8 +319,8 @@ func (r *endpointResource) Update(ctx context.Context, req resource.UpdateReques
 			Task:       plan.Model.Task,
 		},
 		Provider: &huggingface.Provider{
-			Region: plan.ProviderDetails.Region,
-			Vendor: plan.ProviderDetails.Vendor,
+			Region: plan.Cloud.Region,
+			Vendor: plan.Cloud.Vendor,
 		},
 		Type: plan.Type.ValueString(),
 	}
@@ -358,7 +358,7 @@ func (r *endpointResource) Update(ctx context.Context, req resource.UpdateReques
 			Task:       updatedEndpoint.Model.Task,
 		},
 		Name: types.StringValue(updatedEndpoint.Name),
-		ProviderDetails: Provider{
+		Cloud: Cloud{
 			Region: updatedEndpoint.Provider.Region,
 			Vendor: updatedEndpoint.Provider.Vendor,
 		},

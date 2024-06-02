@@ -1,19 +1,5 @@
-terraform {
-  required_providers {
-    huggingface = {
-      source = "hashicorp.com/edu/huggingface"
-    }
-  }
-}
-
-provider "huggingface" {
-  host      = "https://api.endpoints.huggingface.cloud/v2/endpoint"
-  namespace = "issamemari"
-  token     = ""
-}
-
-resource "huggingface_endpoint" "edu" {
-  name = "test-endpoint-issa"
+resource "huggingface_endpoint" "endpoint1" {
+  name = "test-endpoint-issa1"
 
   compute = {
     accelerator  = "cpu"
@@ -46,6 +32,6 @@ resource "huggingface_endpoint" "edu" {
   type = "protected"
 }
 
-output "edu_endpoint" {
-  value = huggingface_endpoint.edu
+output "endpoint1" {
+  value = huggingface_endpoint.endpoint1
 }
