@@ -20,7 +20,6 @@ resource "huggingface_endpoint" "endpoint1" {
       }
     }
     repository = "sentence-transformers/all-MiniLM-L6-v2"
-    revision   = "main"
     task       = "sentence-embeddings"
   }
 

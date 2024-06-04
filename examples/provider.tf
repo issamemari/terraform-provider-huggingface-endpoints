@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     huggingface = {
-      source = "issamemari/huggingface-endpoints"
+      source = "example.com/issamemari/huggingface"
     }
   }
 }

@@ -8,7 +8,6 @@ resource "huggingface_endpoint" "endpoint2" {
     scaling = {
       min_replica           = 0
       max_replica           = 1
-      scale_to_zero_timeout = 15
     }
   }
 

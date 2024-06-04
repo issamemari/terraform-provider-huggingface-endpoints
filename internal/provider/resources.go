@@ -79,7 +79,7 @@ func (r *endpointResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 								Required: true,
 							},
 							"scale_to_zero_timeout": schema.Int64Attribute{
-								Required: true,
+								Optional: true,
 							},
 						},
 					},
@@ -109,7 +109,8 @@ func (r *endpointResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 						Required: true,
 					},
 					"revision": schema.StringAttribute{
-						Required: true,
+						Computed: true,
+						Optional: true,
 					},
 					"task": schema.StringAttribute{
 						Required: true,
@@ -153,9 +154,9 @@ func (r *endpointResource) Create(ctx context.Context, req resource.CreateReques
 			InstanceSize: plan.Compute.InstanceSize,
 			InstanceType: plan.Compute.InstanceType,
 			Scaling: huggingface.Scaling{
-				MaxReplica:         int(plan.Compute.Scaling.MaxReplica),
-				MinReplica:         int(plan.Compute.Scaling.MinReplica),
-				ScaleToZeroTimeout: int(plan.Compute.Scaling.ScaleToZeroTimeout),
+				MaxReplica:         plan.Compute.Scaling.MaxReplica,
+				MinReplica:         plan.Compute.Scaling.MinReplica,
+				ScaleToZeroTimeout: plan.Compute.Scaling.ScaleToZeroTimeout,
 			},
 		},
 		Model: huggingface.Model{
@@ -166,7 +167,7 @@ func (r *endpointResource) Create(ctx context.Context, req resource.CreateReques
 				},
 			},
 			Repository: plan.Model.Repository,
-			Revision:   plan.Model.Revision,
+			Revision:   plan.Model.Revision.ValueStringPointer(),
 			Task:       plan.Model.Task,
 		},
 		Provider: &huggingface.Provider{
@@ -205,7 +206,7 @@ func (r *endpointResource) Create(ctx context.Context, req resource.CreateReques
 				},
 			},
 			Repository: createdEndpoint.Model.Repository,
-			Revision:   createdEndpoint.Model.Revision,
+			Revision:   types.StringPointerValue(createdEndpoint.Model.Revision),
 			Task:       createdEndpoint.Model.Task,
 		},
 		Name: types.StringValue(createdEndpoint.Name),
@@ -264,7 +265,7 @@ func (r *endpointResource) Read(ctx context.Context, req resource.ReadRequest, r
 				},
 			},
 			Repository: endpoint.Model.Repository,
-			Revision:   endpoint.Model.Revision,
+			Revision:   types.StringPointerValue(endpoint.Model.Revision),
 			Task:       endpoint.Model.Task,
 		},
 		Name: types.StringValue(endpoint.Name),
@@ -302,9 +303,9 @@ func (r *endpointResource) Update(ctx context.Context, req resource.UpdateReques
 			InstanceSize: plan.Compute.InstanceSize,
 			InstanceType: plan.Compute.InstanceType,
 			Scaling: huggingface.Scaling{
-				MaxReplica:         int(plan.Compute.Scaling.MaxReplica),
-				MinReplica:         int(plan.Compute.Scaling.MinReplica),
-				ScaleToZeroTimeout: int(plan.Compute.Scaling.ScaleToZeroTimeout),
+				MaxReplica:         plan.Compute.Scaling.MaxReplica,
+				MinReplica:         plan.Compute.Scaling.MinReplica,
+				ScaleToZeroTimeout: plan.Compute.Scaling.ScaleToZeroTimeout,
 			},
 		},
 		Model: huggingface.Model{
@@ -315,7 +316,7 @@ func (r *endpointResource) Update(ctx context.Context, req resource.UpdateReques
 				},
 			},
 			Repository: plan.Model.Repository,
-			Revision:   plan.Model.Revision,
+			Revision:   plan.Model.Revision.ValueStringPointer(),
 			Task:       plan.Model.Task,
 		},
 		Provider: &huggingface.Provider{
@@ -354,7 +355,7 @@ func (r *endpointResource) Update(ctx context.Context, req resource.UpdateReques
 				},
 			},
 			Repository: updatedEndpoint.Model.Repository,
-			Revision:   updatedEndpoint.Model.Revision,
+			Revision:   types.StringPointerValue(updatedEndpoint.Model.Revision),
 			Task:       updatedEndpoint.Model.Task,
 		},
 		Name: types.StringValue(updatedEndpoint.Name),

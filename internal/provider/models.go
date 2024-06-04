@@ -1,5 +1,7 @@
 package provider
 
+import "github.com/hashicorp/terraform-plugin-framework/types"
+
 type Endpoint struct {
 	AccountId *string `tfsdk:"account_id"`
 	Compute   Compute `tfsdk:"compute"`
@@ -18,17 +20,17 @@ type Compute struct {
 }
 
 type Scaling struct {
-	MaxReplica         int `tfsdk:"max_replica"`
-	MinReplica         int `tfsdk:"min_replica"`
-	ScaleToZeroTimeout int `tfsdk:"scale_to_zero_timeout"`
+	MaxReplica         int  `tfsdk:"max_replica"`
+	MinReplica         int  `tfsdk:"min_replica"`
+	ScaleToZeroTimeout *int `tfsdk:"scale_to_zero_timeout"`
 }
 
 type Model struct {
-	Framework  string `tfsdk:"framework"`
-	Image      Image  `tfsdk:"image"`
-	Repository string `tfsdk:"repository"`
-	Revision   string `tfsdk:"revision"`
-	Task       string `tfsdk:"task"`
+	Framework  string       `tfsdk:"framework"`
+	Image      Image        `tfsdk:"image"`
+	Repository string       `tfsdk:"repository"`
+	Revision   types.String `tfsdk:"revision"`
+	Task       string       `tfsdk:"task"`
 }
 
 type Image struct {

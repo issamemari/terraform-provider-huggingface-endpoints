@@ -31,7 +31,7 @@ type huggingfaceProvider struct {
 
 // Metadata returns the provider type name.
 func (p *huggingfaceProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "huggingface-endpoints"
+	resp.TypeName = "huggingface"
 	resp.Version = p.version
 }
 
