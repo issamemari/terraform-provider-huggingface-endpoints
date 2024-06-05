@@ -95,11 +95,40 @@ func (r *endpointResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 						Required: true,
 						Attributes: map[string]schema.Attribute{
 							"huggingface": schema.SingleNestedAttribute{
-								Required: true,
+								Optional: true,
 								Attributes: map[string]schema.Attribute{
 									"env": schema.MapAttribute{
 										Optional:    true,
 										ElementType: types.StringType,
+									},
+								},
+							},
+							"custom": schema.SingleNestedAttribute{
+								Optional: true,
+								Attributes: map[string]schema.Attribute{
+									"credentials": schema.SingleNestedAttribute{
+										Optional: true,
+										Attributes: map[string]schema.Attribute{
+											"username": schema.StringAttribute{
+												Required: true,
+											},
+											"password": schema.StringAttribute{
+												Required: true,
+											},
+										},
+									},
+									"env": schema.MapAttribute{
+										Optional:    true,
+										ElementType: types.StringType,
+									},
+									"health_route": schema.StringAttribute{
+										Optional: true,
+									},
+									"port": schema.Int64Attribute{
+										Optional: true,
+									},
+									"url": schema.StringAttribute{
+										Required: true,
 									},
 								},
 							},
@@ -138,43 +167,179 @@ func (r *endpointResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 	}
 }
 
+func clientEndpointToProviderEndpoint(endpoint huggingface.EndpointDetails) endpointResourceModel {
+	var image Image
+	if endpoint.Model.Image.Huggingface != nil {
+		image = Image{
+			Huggingface: &Huggingface{
+				Env: endpoint.Model.Image.Huggingface.Env,
+			},
+		}
+	} else if endpoint.Model.Image.Custom != nil {
+		image = Image{
+			Custom: &Custom{
+				Env:         endpoint.Model.Image.Custom.Env,
+				HealthRoute: endpoint.Model.Image.Custom.HealthRoute,
+				Port:        endpoint.Model.Image.Custom.Port,
+				URL:         endpoint.Model.Image.Custom.URL,
+			},
+		}
+		if endpoint.Model.Image.Custom.Credentials != nil {
+			image.Custom.Credentials = &Credentials{
+				Username: endpoint.Model.Image.Custom.Credentials.Username,
+				Password: endpoint.Model.Image.Custom.Credentials.Password,
+			}
+		}
+	}
+
+	providerEndpoint := endpointResourceModel{
+		AccountId: types.StringPointerValue(endpoint.AccountId),
+		Compute: Compute{
+			Accelerator:  endpoint.Compute.Accelerator,
+			InstanceSize: endpoint.Compute.InstanceSize,
+			InstanceType: endpoint.Compute.InstanceType,
+			Scaling: Scaling{
+				MaxReplica:         endpoint.Compute.Scaling.MaxReplica,
+				MinReplica:         endpoint.Compute.Scaling.MinReplica,
+				ScaleToZeroTimeout: endpoint.Compute.Scaling.ScaleToZeroTimeout,
+			},
+		},
+		Model: Model{
+			Framework:  endpoint.Model.Framework,
+			Image:      image,
+			Repository: endpoint.Model.Repository,
+			Revision:   types.StringPointerValue(endpoint.Model.Revision),
+			Task:       types.StringPointerValue(endpoint.Model.Task),
+		},
+		Name: types.StringValue(endpoint.Name),
+		Cloud: Cloud{
+			Region: endpoint.Provider.Region,
+			Vendor: endpoint.Provider.Vendor,
+		},
+		Type: types.StringValue(endpoint.Type),
+	}
+
+	if endpoint.Model.Image.Huggingface != nil && endpoint.Model.Image.Huggingface.Env == nil {
+		providerEndpoint.Model.Image.Huggingface.Env = make(map[string]string)
+	}
+
+	if endpoint.Model.Image.Custom != nil && endpoint.Model.Image.Custom.Env == nil {
+		providerEndpoint.Model.Image.Custom.Env = make(map[string]string)
+	}
+
+	return providerEndpoint
+}
+
+func providerEndpointToCreateEndpointRequest(endpoint endpointResourceModel) huggingface.CreateEndpointRequest {
+	var image huggingface.Image
+	if endpoint.Model.Image.Huggingface != nil {
+		image = huggingface.Image{
+			Huggingface: &huggingface.Huggingface{
+				Env: endpoint.Model.Image.Huggingface.Env,
+			},
+		}
+	} else if endpoint.Model.Image.Custom != nil {
+		image = huggingface.Image{
+			Custom: &huggingface.Custom{
+				Env:         endpoint.Model.Image.Custom.Env,
+				HealthRoute: endpoint.Model.Image.Custom.HealthRoute,
+				Port:        endpoint.Model.Image.Custom.Port,
+				URL:         endpoint.Model.Image.Custom.URL,
+			},
+		}
+		if endpoint.Model.Image.Custom.Credentials != nil {
+			image.Custom.Credentials = &huggingface.Credentials{
+				Username: endpoint.Model.Image.Custom.Credentials.Username,
+				Password: endpoint.Model.Image.Custom.Credentials.Password,
+			}
+		}
+	}
+
+	huggingfaceEndpoint := huggingface.CreateEndpointRequest{
+		Name:      endpoint.Name.ValueString(),
+		AccountId: endpoint.AccountId.ValueStringPointer(),
+		Compute: huggingface.Compute{
+			Accelerator:  endpoint.Compute.Accelerator,
+			InstanceSize: endpoint.Compute.InstanceSize,
+			InstanceType: endpoint.Compute.InstanceType,
+			Scaling: huggingface.Scaling{
+				MaxReplica:         endpoint.Compute.Scaling.MaxReplica,
+				MinReplica:         endpoint.Compute.Scaling.MinReplica,
+				ScaleToZeroTimeout: endpoint.Compute.Scaling.ScaleToZeroTimeout,
+			},
+		},
+		Model: huggingface.Model{
+			Framework:  endpoint.Model.Framework,
+			Image:      image,
+			Repository: endpoint.Model.Repository,
+			Revision:   endpoint.Model.Revision.ValueStringPointer(),
+			Task:       endpoint.Model.Task.ValueStringPointer(),
+		},
+		Provider: huggingface.Provider{
+			Region: endpoint.Cloud.Region,
+			Vendor: endpoint.Cloud.Vendor,
+		},
+		Type: endpoint.Type.ValueString(),
+	}
+
+	return huggingfaceEndpoint
+}
+
+func providerEndpointToUpdateEndpointRequest(endpoint endpointResourceModel) huggingface.UpdateEndpointRequest {
+	var image huggingface.Image
+	if endpoint.Model.Image.Huggingface != nil {
+		image = huggingface.Image{
+			Huggingface: &huggingface.Huggingface{
+				Env: endpoint.Model.Image.Huggingface.Env,
+			},
+		}
+	} else if endpoint.Model.Image.Custom != nil {
+		image = huggingface.Image{
+			Custom: &huggingface.Custom{
+				Env:         endpoint.Model.Image.Custom.Env,
+				HealthRoute: endpoint.Model.Image.Custom.HealthRoute,
+				Port:        endpoint.Model.Image.Custom.Port,
+				URL:         endpoint.Model.Image.Custom.URL,
+			},
+		}
+		if endpoint.Model.Image.Custom.Credentials != nil {
+			image.Custom.Credentials = &huggingface.Credentials{
+				Username: endpoint.Model.Image.Custom.Credentials.Username,
+				Password: endpoint.Model.Image.Custom.Credentials.Password,
+			}
+		}
+	}
+
+	huggingfaceEndpoint := huggingface.UpdateEndpointRequest{
+		Compute: &huggingface.Compute{
+			Accelerator:  endpoint.Compute.Accelerator,
+			InstanceSize: endpoint.Compute.InstanceSize,
+			InstanceType: endpoint.Compute.InstanceType,
+			Scaling: huggingface.Scaling{
+				MaxReplica:         endpoint.Compute.Scaling.MaxReplica,
+				MinReplica:         endpoint.Compute.Scaling.MinReplica,
+				ScaleToZeroTimeout: endpoint.Compute.Scaling.ScaleToZeroTimeout,
+			},
+		},
+		Model: &huggingface.Model{
+			Framework:  endpoint.Model.Framework,
+			Image:      image,
+			Repository: endpoint.Model.Repository,
+			Revision:   endpoint.Model.Revision.ValueStringPointer(),
+			Task:       endpoint.Model.Task.ValueStringPointer(),
+		},
+		Type: endpoint.Type.ValueStringPointer(),
+	}
+
+	return huggingfaceEndpoint
+}
+
 func (r *endpointResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan endpointResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
-	}
-
-	endpoint := huggingface.Endpoint{
-		Name:      plan.Name.ValueString(),
-		AccountId: plan.AccountId.ValueStringPointer(),
-		Compute: huggingface.Compute{
-			Accelerator:  plan.Compute.Accelerator,
-			InstanceSize: plan.Compute.InstanceSize,
-			InstanceType: plan.Compute.InstanceType,
-			Scaling: huggingface.Scaling{
-				MaxReplica:         plan.Compute.Scaling.MaxReplica,
-				MinReplica:         plan.Compute.Scaling.MinReplica,
-				ScaleToZeroTimeout: plan.Compute.Scaling.ScaleToZeroTimeout,
-			},
-		},
-		Model: huggingface.Model{
-			Framework: plan.Model.Framework,
-			Image: huggingface.Image{
-				Huggingface: huggingface.Huggingface{
-					Env: plan.Model.Image.Huggingface.Env,
-				},
-			},
-			Repository: plan.Model.Repository,
-			Revision:   plan.Model.Revision.ValueStringPointer(),
-			Task:       plan.Model.Task,
-		},
-		Provider: &huggingface.Provider{
-			Region: plan.Cloud.Region,
-			Vendor: plan.Cloud.Vendor,
-		},
-		Type: plan.Type.ValueString(),
 	}
 
 	existingEndpoints, err := r.client.ListEndpoints()
@@ -186,20 +351,22 @@ func (r *endpointResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	var createdEndpoint huggingface.Endpoint
-
 	useUpdate := false
 	for _, existingEndpoint := range existingEndpoints {
-		if existingEndpoint.Name == endpoint.Name {
+		if existingEndpoint.Name == plan.Name.ValueString() {
 			useUpdate = true
 			break
 		}
 	}
 
+	var createdEndpoint huggingface.EndpointDetails
+
 	if useUpdate {
-		createdEndpoint, err = r.client.UpdateEndpoint(endpoint.Name, endpoint)
+		updateEndpointRequest := providerEndpointToUpdateEndpointRequest(plan)
+		createdEndpoint, err = r.client.UpdateEndpoint(plan.Name.ValueString(), updateEndpointRequest)
 	} else {
-		createdEndpoint, err = r.client.CreateEndpoint(endpoint)
+		createEndpointRequest := providerEndpointToCreateEndpointRequest(plan)
+		createdEndpoint, err = r.client.CreateEndpoint(createEndpointRequest)
 	}
 
 	if err != nil {
@@ -210,40 +377,7 @@ func (r *endpointResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	plan = endpointResourceModel{
-		AccountId: types.StringPointerValue(createdEndpoint.AccountId),
-		Compute: Compute{
-			Accelerator:  createdEndpoint.Compute.Accelerator,
-			InstanceSize: createdEndpoint.Compute.InstanceSize,
-			InstanceType: createdEndpoint.Compute.InstanceType,
-			Scaling: Scaling{
-				MaxReplica:         createdEndpoint.Compute.Scaling.MaxReplica,
-				MinReplica:         createdEndpoint.Compute.Scaling.MinReplica,
-				ScaleToZeroTimeout: createdEndpoint.Compute.Scaling.ScaleToZeroTimeout,
-			},
-		},
-		Model: Model{
-			Framework: createdEndpoint.Model.Framework,
-			Image: Image{
-				Huggingface: Huggingface{
-					Env: createdEndpoint.Model.Image.Huggingface.Env,
-				},
-			},
-			Repository: createdEndpoint.Model.Repository,
-			Revision:   types.StringPointerValue(createdEndpoint.Model.Revision),
-			Task:       createdEndpoint.Model.Task,
-		},
-		Name: types.StringValue(createdEndpoint.Name),
-		Cloud: Cloud{
-			Region: createdEndpoint.Provider.Region,
-			Vendor: createdEndpoint.Provider.Vendor,
-		},
-		Type: types.StringValue(createdEndpoint.Type),
-	}
-
-	if plan.Model.Image.Huggingface.Env == nil {
-		plan.Model.Image.Huggingface.Env = make(map[string]interface{})
-	}
+	plan = clientEndpointToProviderEndpoint(createdEndpoint)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -269,40 +403,7 @@ func (r *endpointResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 
-	state = endpointResourceModel{
-		AccountId: types.StringPointerValue(endpoint.AccountId),
-		Compute: Compute{
-			Accelerator:  endpoint.Compute.Accelerator,
-			InstanceSize: endpoint.Compute.InstanceSize,
-			InstanceType: endpoint.Compute.InstanceType,
-			Scaling: Scaling{
-				MaxReplica:         endpoint.Compute.Scaling.MaxReplica,
-				MinReplica:         endpoint.Compute.Scaling.MinReplica,
-				ScaleToZeroTimeout: endpoint.Compute.Scaling.ScaleToZeroTimeout,
-			},
-		},
-		Model: Model{
-			Framework: endpoint.Model.Framework,
-			Image: Image{
-				Huggingface: Huggingface{
-					Env: endpoint.Model.Image.Huggingface.Env,
-				},
-			},
-			Repository: endpoint.Model.Repository,
-			Revision:   types.StringPointerValue(endpoint.Model.Revision),
-			Task:       endpoint.Model.Task,
-		},
-		Name: types.StringValue(endpoint.Name),
-		Cloud: Cloud{
-			Region: endpoint.Provider.Region,
-			Vendor: endpoint.Provider.Vendor,
-		},
-		Type: types.StringValue(endpoint.Type),
-	}
-
-	if state.Model.Image.Huggingface.Env == nil {
-		state.Model.Image.Huggingface.Env = make(map[string]interface{})
-	}
+	state = clientEndpointToProviderEndpoint(endpoint)
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -319,38 +420,9 @@ func (r *endpointResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
-	endpoint := huggingface.Endpoint{
-		Name:      plan.Name.ValueString(),
-		AccountId: plan.AccountId.ValueStringPointer(),
-		Compute: huggingface.Compute{
-			Accelerator:  plan.Compute.Accelerator,
-			InstanceSize: plan.Compute.InstanceSize,
-			InstanceType: plan.Compute.InstanceType,
-			Scaling: huggingface.Scaling{
-				MaxReplica:         plan.Compute.Scaling.MaxReplica,
-				MinReplica:         plan.Compute.Scaling.MinReplica,
-				ScaleToZeroTimeout: plan.Compute.Scaling.ScaleToZeroTimeout,
-			},
-		},
-		Model: huggingface.Model{
-			Framework: plan.Model.Framework,
-			Image: huggingface.Image{
-				Huggingface: huggingface.Huggingface{
-					Env: plan.Model.Image.Huggingface.Env,
-				},
-			},
-			Repository: plan.Model.Repository,
-			Revision:   plan.Model.Revision.ValueStringPointer(),
-			Task:       plan.Model.Task,
-		},
-		Provider: &huggingface.Provider{
-			Region: plan.Cloud.Region,
-			Vendor: plan.Cloud.Vendor,
-		},
-		Type: plan.Type.ValueString(),
-	}
+	endpoint := providerEndpointToUpdateEndpointRequest(plan)
 
-	updatedEndpoint, err := r.client.UpdateEndpoint(endpoint.Name, endpoint)
+	updatedEndpoint, err := r.client.UpdateEndpoint(plan.Name.ValueString(), endpoint)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"error updating endpoint",
@@ -359,40 +431,7 @@ func (r *endpointResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
-	plan = endpointResourceModel{
-		AccountId: types.StringPointerValue(updatedEndpoint.AccountId),
-		Compute: Compute{
-			Accelerator:  updatedEndpoint.Compute.Accelerator,
-			InstanceSize: updatedEndpoint.Compute.InstanceSize,
-			InstanceType: updatedEndpoint.Compute.InstanceType,
-			Scaling: Scaling{
-				MaxReplica:         updatedEndpoint.Compute.Scaling.MaxReplica,
-				MinReplica:         updatedEndpoint.Compute.Scaling.MinReplica,
-				ScaleToZeroTimeout: updatedEndpoint.Compute.Scaling.ScaleToZeroTimeout,
-			},
-		},
-		Model: Model{
-			Framework: updatedEndpoint.Model.Framework,
-			Image: Image{
-				Huggingface: Huggingface{
-					Env: updatedEndpoint.Model.Image.Huggingface.Env,
-				},
-			},
-			Repository: updatedEndpoint.Model.Repository,
-			Revision:   types.StringPointerValue(updatedEndpoint.Model.Revision),
-			Task:       updatedEndpoint.Model.Task,
-		},
-		Name: types.StringValue(updatedEndpoint.Name),
-		Cloud: Cloud{
-			Region: updatedEndpoint.Provider.Region,
-			Vendor: updatedEndpoint.Provider.Vendor,
-		},
-		Type: types.StringValue(updatedEndpoint.Type),
-	}
-
-	if updatedEndpoint.Model.Image.Huggingface.Env == nil {
-		plan.Model.Image.Huggingface.Env = make(map[string]interface{})
-	}
+	plan = clientEndpointToProviderEndpoint(updatedEndpoint)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)

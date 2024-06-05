@@ -8,7 +8,7 @@ require (
 	github.com/hashicorp/terraform-plugin-docs v0.19.3
 	github.com/hashicorp/terraform-plugin-framework v1.8.0
 	github.com/hashicorp/terraform-plugin-log v0.9.0
-	github.com/issamemari/huggingface-endpoints-client-go v1.3.0
+	github.com/issamemari/huggingface-endpoints-client-go v1.5.1
 )
 
 require (

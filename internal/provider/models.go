@@ -30,15 +30,29 @@ type Model struct {
 	Image      Image        `tfsdk:"image"`
 	Repository string       `tfsdk:"repository"`
 	Revision   types.String `tfsdk:"revision"`
-	Task       string       `tfsdk:"task"`
+	Task       types.String `tfsdk:"task"`
 }
 
 type Image struct {
-	Huggingface Huggingface `tfsdk:"huggingface"`
+	Huggingface *Huggingface `tfsdk:"huggingface"`
+	Custom      *Custom      `tfsdk:"custom"`
+}
+
+type Custom struct {
+	Credentials *Credentials      `tfsdk:"credentials"`
+	Env         map[string]string `tfsdk:"env"`
+	HealthRoute *string           `tfsdk:"health_route"`
+	Port        *int              `tfsdk:"port"`
+	URL         string            `tfsdk:"url"`
+}
+
+type Credentials struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
 }
 
 type Huggingface struct {
-	Env map[string]interface{} `tfsdk:"env"`
+	Env map[string]string `tfsdk:"env"`
 }
 
 type Cloud struct {

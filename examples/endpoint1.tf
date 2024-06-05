@@ -15,6 +15,15 @@ resource "huggingface_endpoint" "endpoint1" {
   model = {
     framework = "pytorch"
     image = {
+      # custom = {
+      #   url          = "ghcr.io/huggingface/text-embeddings-inference:cpu-0.6.0"
+      #   health_route = "/health"
+      #   env          = {
+      #     MAX_BATCH_TOKENS        = 1000000
+      #     MAX_CONCURRENT_REQUESTS = 512
+      #     MODEL_ID                = "/repository"
+      #   }
+      # }
       huggingface = {
         env = {}
       }
