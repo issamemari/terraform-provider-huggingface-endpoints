@@ -177,7 +177,31 @@ func (r *endpointResource) Create(ctx context.Context, req resource.CreateReques
 		Type: plan.Type.ValueString(),
 	}
 
-	createdEndpoint, err := r.client.CreateEndpoint(endpoint)
+	existingEndpoints, err := r.client.ListEndpoints()
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"error listing endpoints",
+			err.Error(),
+		)
+		return
+	}
+
+	var createdEndpoint huggingface.Endpoint
+
+	useUpdate := false
+	for _, existingEndpoint := range existingEndpoints {
+		if existingEndpoint.Name == endpoint.Name {
+			useUpdate = true
+			break
+		}
+	}
+
+	if useUpdate {
+		createdEndpoint, err = r.client.UpdateEndpoint(endpoint.Name, endpoint)
+	} else {
+		createdEndpoint, err = r.client.CreateEndpoint(endpoint)
+	}
+
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"error creating endpoint",
